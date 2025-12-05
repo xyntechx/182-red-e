@@ -44,7 +44,7 @@ export default function Home() {
                         <input
                             id="author"
                             placeholder="Search Author..."
-                            className="border p-2 rounded"
+                            className="border p-2 rounded outline-none"
                         />
                     </div>
 
@@ -53,7 +53,7 @@ export default function Home() {
                         <input
                             id="post-title"
                             placeholder="Search Post Title..."
-                            className="border p-2 rounded"
+                            className="border p-2 rounded outline-none"
                         />
                     </div>
                 </div>
