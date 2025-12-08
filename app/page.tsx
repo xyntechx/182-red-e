@@ -1,7 +1,38 @@
+"use client";
+
 import Post from "@/components/Post";
-import { sample_posts } from "@/utils/sample_posts";
+import { useEffect, useState } from "react";
+import { IPost } from "@/utils/types";
 
 export default function Home() {
+    const [posts, setPosts] = useState<IPost[]>([]);
+    const [participationTypeFilter, setParticipationTypeFilter] = useState<
+        "A" | "B" | "C" | "D" | "E"
+    >();
+    const [authorFilter, setAuthorFilter] = useState<string>();
+    const [titleFilter, setTitleFilter] = useState<string>();
+
+    useEffect(() => {
+        const getAllPosts = async () => {
+            const url =
+                "https://eecs182-website-backend.onrender.com/api/threads";
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Response status: ${response.status}`);
+                }
+                const result = await response.json();
+                console.log(result);
+
+                setPosts(result);
+            } catch (error: any) {
+                console.error(error.message);
+            }
+        };
+
+        getAllPosts();
+    }, []);
+
     return (
         <main className="flex w-screen min-h-screen items-start justify-start bg-zinc-50 font-sans p-10 flex-col gap-10">
             <div className="flex items-start justify-start gap-2 flex-col">
@@ -60,8 +91,8 @@ export default function Home() {
             </div>
 
             <section className="grid grid-cols-2 w-full gap-4">
-                {sample_posts.map((post) => (
-                    <Post key={post.id} {...post} />
+                {posts.map((post) => (
+                    <Post key={post.thread_id} {...post} />
                 ))}
             </section>
         </main>

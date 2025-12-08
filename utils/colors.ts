@@ -1,7 +1,7 @@
 export const participation_colors = {
-    "a": "bg-red-300",
-    "b": "bg-yellow-300",
-    "c": "bg-green-300",
-    "d": "bg-blue-300",
-    "e": "bg-purple-300",
+    "A": "bg-red-300",
+    "B": "bg-yellow-300",
+    "C": "bg-green-300",
+    "D": "bg-blue-300",
+    "E": "bg-purple-300",
 }
