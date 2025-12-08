@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS182A/282A Special Participation Search Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Serif', serif;
+            background: #003262;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #003262;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .search-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #003262;
+        }
+
+        .dropdown-container {
+            position: relative;
+        }
+
+        .dropdown-display {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Noto Serif', serif;
+            background: white;
+            cursor: pointer;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            transition: border-color 0.3s;
+        }
+
+        .dropdown-display:hover,
+        .dropdown-display.active {
+            border-color: #FDB515;
+        }
+
+        .dropdown-placeholder {
+            color: #6c757d;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #FDB515;
+            border-radius: 6px;
+            margin-top: 4px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-controls {
+            padding: 8px 12px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Noto Serif', serif;
+            color: #495057;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #FDB515;
+            box-shadow: 0 0 0 2px rgba(253, 181, 21, 0.2);
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #003262;
+            background: white;
+            color: #003262;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Noto Serif', serif;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #003262;
+            color: white;
+        }
+
+        .dropdown-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+        }
+
+        .dropdown-item.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: #f8f9fa;
+        }
+
+        .dropdown-item.disabled:hover {
+            background: #f8f9fa;
+        }
+
+        .dropdown-item.hidden {
+            display: none;
+        }
+
+        .loading {
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .error-message {
+            padding: 20px;
+            text-align: center;
+            color: #dc3545;
+            background: #f8d7da;
+            border-radius: 6px;
+            margin: 10px;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #003262;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .dropdown-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #003262;
+        }
+
+        .dropdown-item.disabled input[type="checkbox"] {
+            cursor: not-allowed;
+        }
+
+        .dropdown-item label {
+            cursor: pointer;
+            flex: 1;
+            font-weight: 400;
+            color: #495057;
+        }
+
+        .dropdown-item.disabled label {
+            cursor: not-allowed;
+        }
+
+        .selected-count {
+            background: #003262;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .search-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-btn {
+            background: #003262;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Noto Serif', serif;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 50, 98, 0.4);
+        }
+
+        .clear-btn {
+            background: #FDB515;
+            color: #003262;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Noto Serif', serif;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(253, 181, 21, 0.4);
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Noto Serif', serif;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: white;
+            color: #003262;
+            border-bottom: 3px solid #FDB515;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+        }
+
+        .content {
+            padding: 30px;
+            min-height: 400px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .summary-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .summary-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #003262;
+        }
+
+        .summary-card h3 {
+            color: #003262;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .summary-text {
+            line-height: 1.8;
+            color: #495057;
+        }
+
+        .pdf-viewer {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #dee2e6;
+        }
+
+        .placeholder {
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .filter-note {
+            background: #FDB515;
+            color: #003262;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        #wordcloud {
+            width: 100%;
+            height: 500px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .sentiment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .sentiment-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .sentiment-card.positive {
+            border-left: 4px solid #28a745;
+        }
+
+        .sentiment-card.neutral {
+            border-left: 4px solid #FDB515;
+        }
+
+        .sentiment-card.negative {
+            border-left: 4px solid #dc3545;
+        }
+
+        .sentiment-score {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 10px 0;
+            color: #003262;
+        }
+
+        .llm-name {
+            font-weight: 600;
+            color: #003262;
+        }
+
+        h3 {
+            font-weight: 700;
+        }
+
+        .posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .post-card {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .post-card:hover {
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+        }
+
+        .post-card h3 {
+            color: #003262;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .post-meta {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .post-author {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .participation-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #003262;
+        }
+
+        .participation-badge.a {
+            background: #ffcccc;
+        }
+
+        .participation-badge.b {
+            background: #fff4cc;
+        }
+
+        .participation-badge.c {
+            background: #ccffcc;
+        }
+
+        .participation-badge.d {
+            background: #cce5ff;
+        }
+
+        .post-excerpt {
+            color: #495057;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .summary-view {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .posts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CS182A/282A Special Participation Search Portal</h1>
+            <p>Search and analyze special participation submissions across different LLM agents</p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-grid">
+                <div class="form-group">
+                    <label>Participation</label>
+                    <div class="dropdown-container">
+                        <div class="dropdown-display" onclick="toggleDropdown('participationDropdown')">
+                            <span class="dropdown-placeholder" id="participationDisplay">Select participation...</span>
+                        </div>
+                        <div class="dropdown-menu" id="participationDropdown">
+                            <div class="dropdown-controls">
+                                <input type="text" class="search-input" placeholder="Search participation..." oninput="filterDropdown('participation', this.value)">
+                                <div class="controls-row">
+                                    <button class="control-btn" onclick="selectAll('participation')">Select All</button>
+                                    <button class="control-btn" onclick="unselectAll('participation')">Unselect All</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item">
+                                <input type="checkbox" id="participation_a" value="A" onchange="updateDisplay('participation')">
+                                <label for="participation_a">Participation A</label>
+                            </div>
+                            <div class="dropdown-item">
+                                <input type="checkbox" id="participation_b" value="B" onchange="updateDisplay('participation')">
+                                <label for="participation_b">Participation B</label>
+                            </div>
+                            <div class="dropdown-item">
+                                <input type="checkbox" id="participation_c" value="C" onchange="updateDisplay('participation')">
+                                <label for="participation_c">Participation C</label>
+                            </div>
+                            <div class="dropdown-item">
+                                <input type="checkbox" id="participation_d" value="D" onchange="updateDisplay('participation')">
+                                <label for="participation_d">Participation D</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Author Name</label>
+                    <div class="dropdown-container">
+                        <div class="dropdown-display" onclick="toggleDropdown('studentDropdown')">
+                            <span class="dropdown-placeholder" id="studentDisplay">Select students...</span>
+                        </div>
+                        <div class="dropdown-menu" id="studentDropdown">
+                            <div class="dropdown-controls">
+                                <input type="text" class="search-input" placeholder="Search students..." oninput="filterDropdown('student', this.value)">
+                                <div class="controls-row">
+                                    <button class="control-btn" onclick="selectAll('student')">Select All</button>
+                                    <button class="control-btn" onclick="unselectAll('student')">Unselect All</button>
+                                </div>
+                            </div>
+                            <div id="studentDropdownItems" class="loading">
+                                <div class="loading-spinner"></div>
+                                <p style="margin-top: 10px;">Loading students...</p>
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                            <div class="dropdown-item">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Homework Number</label>
+                    <div class="dropdown-container">
+                        <div class="dropdown-display" onclick="toggleDropdown('homeworkDropdown')">
+                            <span class="dropdown-placeholder" id="homeworkDisplay">Select homework...</span>
+                        </div>
+                        <div class="dropdown-menu" id="homeworkDropdown">
+                            <div class="dropdown-controls">
+                                <input type="text" class="search-input" placeholder="Search homework..." oninput="filterDropdown('homework', this.value)">
+                                <div class="controls-row">
+                                    <button class="control-btn" onclick="selectAll('homework')">Select All</button>
+                                    <button class="control-btn" onclick="unselectAll('homework')">Unselect All</button>
+                                </div>
+                            </div>
+                            <div id="homeworkDropdownItems" class="loading">
+                                <div class="loading-spinner"></div>
+                                <p style="margin-top: 10px;">Loading homeworks...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>LLM Agent</label>
+                    <div class="dropdown-container">
+                        <div class="dropdown-display" onclick="toggleDropdown('llmDropdown')">
+                            <span class="dropdown-placeholder" id="llmDisplay">Select LLM agents...</span>
+                        </div>
+                        <div class="dropdown-menu" id="llmDropdown">
+                            <div class="dropdown-controls">
+                                <input type="text" class="search-input" placeholder="Search LLM agents..." oninput="filterDropdown('llm', this.value)">
+                                <div class="controls-row">
+                                    <button class="control-btn" onclick="selectAll('llm')">Select All</button>
+                                    <button class="control-btn" onclick="unselectAll('llm')">Unselect All</button>
+                                </div>
+                            </div>
+                            <div id="llmDropdownItems" class="loading">
+                                <div class="loading-spinner"></div>
+                                <p style="margin-top: 10px;">Loading LLM agents...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-actions">
+                <button class="search-btn" onclick="handleSearch()">Search</button>
+                <button class="clear-btn" onclick="clearAllSelections()">Clear All Selections</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('summary')">Executive Summary & PDF</button>
+            <button class="tab" onclick="switchTab('analysis')">Word Cloud & Sentiment Analysis</button>
+        </div>
+
+        <div class="content">
+            <div id="summaryTab" class="tab-content active">
+                <div class="summary-view">
+                    <div class="summary-card">
+                        <h3>Executive Summary</h3>
+                        <div class="summary-text" id="summaryText">
+                            <p class="placeholder">Select a student, homework, and LLM agent to view the executive summary.</p>
+                        </div>
+                    </div>
+                    <div class="pdf-viewer" id="pdfViewer">
+                        <div class="placeholder">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <p>Annotated code PDF will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analysisTab" class="tab-content">
+                <div class="filter-note">
+                    Select participation type, students, homework assignments, and LLM agents above, then click Search to generate analysis
+                </div>
+
+                <h3 style="margin-bottom: 20px; color: #003262;">Posts</h3>
+                <div class="posts-grid" id="postsGrid">
+                    <p class="placeholder">Select filters above and click Search to see posts</p>
+                </div>
+
+                <h3 style="margin-bottom: 20px; margin-top: 40px; color: #003262;">Word Cloud</h3>
+                <div id="wordcloud"></div>
+                
+                <h3 style="margin-bottom: 20px; color: #003262;">Sentiment Analysis by LLM Agent</h3>
+                <div class="sentiment-grid" id="sentimentGrid">
+                    <p class="placeholder">Select filters above and click Search to see analysis</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:8000/api'; // Change this to your API endpoint
+        
+        // Global data storage
+        let studentsData = [];
+        let homeworksData = [];
+        let llmsData = [];
+        let submissionsData = {};
+        let sentimentData = {};
+        let postsData = [];
+
+        // API Functions
+        async function fetchStudents() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/students`);
+                if (!response.ok) throw new Error('Failed to fetch students');
+                const data = await response.json();
+                studentsData = data;
+                populateStudentDropdown(data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching students:', error);
+                showError('studentDropdownItems', 'Failed to load students. Please check your API connection.');
+                return [];
+            }
+        }
+
+        async function fetchHomeworks() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/homeworks`);
+                if (!response.ok) throw new Error('Failed to fetch homeworks');
+                const data = await response.json();
+                homeworksData = data;
+                populateHomeworkDropdown(data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching homeworks:', error);
+                showError('homeworkDropdownItems', 'Failed to load homeworks. Please check your API connection.');
+                return [];
+            }
+        }
+
+        async function fetchLLMs() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/llms`);
+                if (!response.ok) throw new Error('Failed to fetch LLMs');
+                const data = await response.json();
+                llmsData = data;
+                populateLLMDropdown(data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching LLMs:', error);
+                showError('llmDropdownItems', 'Failed to load LLM agents. Please check your API connection.');
+                return [];
+            }
+        }
+
+        async function fetchSubmission(student, homework, llm) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/submissions?student=${encodeURIComponent(student)}&homework=${homework}&llm=${encodeURIComponent(llm)}`);
+                if (!response.ok) throw new Error('Failed to fetch submission');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching submission:', error);
+                return null;
+            }
+        }
+
+        async function fetchSentimentAnalysis(students, homeworks, llms) {
+            try {
+                const params = new URLSearchParams();
+                if (students.length > 0) params.append('students', students.join(','));
+                if (homeworks.length > 0) params.append('homeworks', homeworks.join(','));
+                if (llms.length > 0) params.append('llms', llms.join(','));
+                
+                const response = await fetch(`${API_BASE_URL}/sentiment?${params.toString()}`);
+                if (!response.ok) throw new Error('Failed to fetch sentiment analysis');
+                const data = await response.json();
+                sentimentData = data;
+                return data;
+            } catch (error) {
+                console.error('Error fetching sentiment analysis:', error);
+                return {};
+            }
+        }
+
+        async function fetchPosts(participation, students, homeworks, llms) {
+            try {
+                const params = new URLSearchParams();
+                if (participation.length > 0) params.append('participation', participation.join(','));
+                if (students.length > 0) params.append('students', students.join(','));
+                if (homeworks.length > 0) params.append('homeworks', homeworks.join(','));
+                if (llms.length > 0) params.append('llms', llms.join(','));
+                
+                const response = await fetch(`${API_BASE_URL}/posts?${params.toString()}`);
+                if (!response.ok) throw new Error('Failed to fetch posts');
+                const data = await response.json();
+                postsData = data;
+                return data;
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+                return [];
+            }
+        }
+
+        function showError(containerId, message) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = `<div class="error-message">${message}</div>`;
+            }
+        }
+
+        function populateStudentDropdown(students) {
+            const container = document.getElementById('studentDropdownItems');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            students.forEach((student, index) => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                const id = `student_${index}_${student.name.replace(/\s+/g, '_').toLowerCase()}`;
+                item.innerHTML = `
+                    <input type="checkbox" id="${id}" value="${student.name}" onchange="updateDisplay('student')">
+                    <label for="${id}">${student.name}</label>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function populateHomeworkDropdown(homeworks) {
+            const container = document.getElementById('homeworkDropdownItems');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            homeworks.forEach((hw) => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.setAttribute('data-student', hw.students.join(','));
+                item.setAttribute('data-llm', hw.llms.join(','));
+                item.innerHTML = `
+                    <input type="checkbox" id="hw_${hw.number}" value="${hw.number}" onchange="updateDisplay('homework')">
+                    <label for="hw_${hw.number}">Homework ${hw.number}</label>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function populateLLMDropdown(llms) {
+            const container = document.getElementById('llmDropdownItems');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            llms.forEach((llm, index) => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.setAttribute('data-student', llm.students.join(','));
+                item.setAttribute('data-homework', llm.homeworks.join(','));
+                const id = `llm_${index}_${llm.name.replace(/\s+/g, '_').toLowerCase()}`;
+                item.innerHTML = `
+                    <input type="checkbox" id="${id}" value="${llm.name}" onchange="updateDisplay('llm')">
+                    <label for="${id}">${llm.name}</label>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Initialize data on page load
+        async function initializeData() {
+            await Promise.all([
+                fetchStudents(),
+                fetchHomeworks(),
+                fetchLLMs()
+            ]);
+            filterDropdowns();
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeData);
+
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            const allDropdowns = document.querySelectorAll('.dropdown-menu');
+            
+            allDropdowns.forEach(d => {
+                if (d.id !== dropdownId) {
+                    d.classList.remove('show');
+                    // Clear search in other dropdowns
+                    const searchInput = d.querySelector('.search-input');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        const type = d.id.includes('student') ? 'student' : d.id.includes('homework') ? 'homework' : d.id.includes('participation') ? 'participation' : 'llm';
+                        filterDropdown(type, '');
+                    }
+                }
+            });
+            
+            const isOpening = !dropdown.classList.contains('show');
+            dropdown.classList.toggle('show');
+            
+            // Focus search input when opening
+            if (isOpening) {
+                const searchInput = dropdown.querySelector('.search-input');
+                if (searchInput) {
+                    setTimeout(() => searchInput.focus(), 100);
+                }
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown-container') && !e.target.closest('.control-btn') && !e.target.closest('.search-input')) {
+                document.querySelectorAll('.dropdown-menu').forEach(d => {
+                    d.classList.remove('show');
+                });
+            }
+        });
+
+        function filterDropdown(type, searchTerm) {
+            let dropdownId, items;
+            if (type === 'student') {
+                dropdownId = 'studentDropdown';
+            } else if (type === 'homework') {
+                dropdownId = 'homeworkDropdown';
+            } else if (type === 'llm') {
+                dropdownId = 'llmDropdown';
+            } else if (type === 'participation') {
+                dropdownId = 'participationDropdown';
+            }
+            
+            items = document.querySelectorAll(`#${dropdownId} .dropdown-item`);
+            const searchLower = searchTerm.toLowerCase().trim();
+            
+            items.forEach(item => {
+                if (item.classList.contains('disabled')) {
+                    return; // Don't filter disabled items, they're already hidden
+                }
+                
+                let text = '';
+                if (type === 'student' || type === 'llm') {
+                    const label = item.querySelector('label');
+                    text = label ? label.textContent.toLowerCase() : '';
+                } else if (type === 'homework') {
+                    const label = item.querySelector('label');
+                    text = label ? label.textContent.toLowerCase() : '';
+                }
+                
+                if (searchLower === '' || text.includes(searchLower)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        }
+
+        function selectAll(type) {
+            let checkboxes;
+            if (type === 'student') {
+                checkboxes = document.querySelectorAll('#studentDropdown .dropdown-item:not(.disabled):not(.hidden) input[type="checkbox"]');
+            } else if (type === 'homework') {
+                checkboxes = document.querySelectorAll('#homeworkDropdown .dropdown-item:not(.disabled):not(.hidden) input[type="checkbox"]');
+            } else if (type === 'llm') {
+                checkboxes = document.querySelectorAll('#llmDropdown .dropdown-item:not(.disabled):not(.hidden) input[type="checkbox"]');
+            } else if (type === 'participation') {
+                checkboxes = document.querySelectorAll('#participationDropdown .dropdown-item:not(.disabled):not(.hidden) input[type="checkbox"]');
+            }
+            checkboxes.forEach(cb => cb.checked = true);
+            updateDisplay(type);
+            filterDropdowns();
+        }
+
+        function unselectAll(type) {
+            let checkboxes;
+            if (type === 'student') {
+                checkboxes = document.querySelectorAll('#studentDropdown input[type="checkbox"]');
+            } else if (type === 'homework') {
+                checkboxes = document.querySelectorAll('#homeworkDropdown input[type="checkbox"]');
+            } else if (type === 'llm') {
+                checkboxes = document.querySelectorAll('#llmDropdown input[type="checkbox"]');
+            } else if (type === 'participation') {
+                checkboxes = document.querySelectorAll('#participationDropdown input[type="checkbox"]');
+            }
+            checkboxes.forEach(cb => cb.checked = false);
+            updateDisplay(type);
+            filterDropdowns();
+        }
+
+        function clearAllSelections() {
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            updateDisplay('participation');
+            updateDisplay('student');
+            updateDisplay('homework');
+            updateDisplay('llm');
+            filterDropdowns();
+        }
+
+        function updateDisplay(type) {
+            let checkboxes, display;
+            
+            if (type === 'student') {
+                checkboxes = document.querySelectorAll('#studentDropdown input[type="checkbox"]');
+                display = document.getElementById('studentDisplay');
+            } else if (type === 'homework') {
+                checkboxes = document.querySelectorAll('#homeworkDropdown input[type="checkbox"]');
+                display = document.getElementById('homeworkDisplay');
+            } else if (type === 'llm') {
+                checkboxes = document.querySelectorAll('#llmDropdown input[type="checkbox"]');
+                display = document.getElementById('llmDisplay');
+            } else if (type === 'participation') {
+                checkboxes = document.querySelectorAll('#participationDropdown input[type="checkbox"]');
+                display = document.getElementById('participationDisplay');
+            }
+            
+            const selected = Array.from(checkboxes).filter(cb => cb.checked);
+            const count = selected.length;
+            
+            if (count === 0) {
+                const placeholderText = type === 'student' ? 'Select students...' : 
+                                      type === 'homework' ? 'Select homework...' : 
+                                      type === 'llm' ? 'Select LLM agents...' : 
+                                      'Select participation...';
+                display.innerHTML = `<span class="dropdown-placeholder">${placeholderText}</span>`;
+            } else if (count === 1) {
+                display.innerHTML = `${selected[0].nextElementSibling.textContent}<span class="selected-count">${count}</span>`;
+            } else {
+                display.innerHTML = `${count} selected<span class="selected-count">${count}</span>`;
+            }
+
+            filterDropdowns();
+        }
+
+        function filterDropdowns() {
+            const selectedStudents = getSelectedValues('student');
+            const selectedHomework = getSelectedValues('homework');
+            const selectedLLMs = getSelectedValues('llm');
+
+            document.querySelectorAll('#homeworkDropdown .dropdown-item').forEach(item => {
+                const hwStudents = item.dataset.student ? item.dataset.student.split(',') : [];
+                const hwLLMs = item.dataset.llm ? item.dataset.llm.split(',') : [];
+                
+                let show = true;
+                if (selectedStudents.length > 0) {
+                    show = show && hwStudents.some(s => selectedStudents.includes(s));
+                }
+                if (selectedLLMs.length > 0) {
+                    show = show && hwLLMs.some(l => selectedLLMs.includes(l));
+                }
+
+                if (!show) {
+                    item.classList.add('disabled');
+                    item.querySelector('input').disabled = true;
+                } else {
+                    item.classList.remove('disabled');
+                    item.querySelector('input').disabled = false;
+                }
+            });
+
+            document.querySelectorAll('#studentDropdown .dropdown-item').forEach(item => {
+                const student = item.querySelector('input').value;
+                let show = false;
+
+                document.querySelectorAll('#homeworkDropdown .dropdown-item').forEach(hwItem => {
+                    const hwStudents = hwItem.dataset.student ? hwItem.dataset.student.split(',') : [];
+                    const hw = hwItem.querySelector('input').value;
+                    
+                    if (hwStudents.includes(student)) {
+                        if (selectedHomework.length === 0 || selectedHomework.includes(hw)) {
+                            const hwLLMs = hwItem.dataset.llm ? hwItem.dataset.llm.split(',') : [];
+                            if (selectedLLMs.length === 0 || hwLLMs.some(l => selectedLLMs.includes(l))) {
+                                show = true;
+                            }
+                        }
+                    }
+                });
+
+                if (!show && (selectedHomework.length > 0 || selectedLLMs.length > 0)) {
+                    item.classList.add('disabled');
+                    item.querySelector('input').disabled = true;
+                } else {
+                    item.classList.remove('disabled');
+                    item.querySelector('input').disabled = false;
+                }
+            });
+
+            document.querySelectorAll('#llmDropdown .dropdown-item').forEach(item => {
+                const llmStudents = item.dataset.student ? item.dataset.student.split(',').map(s => s.trim()) : [];
+                const llmHomeworks = item.dataset.homework ? item.dataset.homework.split(',').map(h => h.trim()) : [];
+                
+                let show = true;
+                
+                // If students are selected, check if any of them are associated with this LLM
+                if (selectedStudents.length > 0) {
+                    show = show && llmStudents.some(s => selectedStudents.includes(s));
+                }
+                
+                // If homeworks are selected, check if any of them are associated with this LLM
+                if (selectedHomework.length > 0) {
+                    show = show && llmHomeworks.some(h => selectedHomework.includes(h));
+                }
+
+                if (!show && (selectedHomework.length > 0 || selectedStudents.length > 0)) {
+                    item.classList.add('disabled');
+                    item.querySelector('input').disabled = true;
+                } else {
+                    item.classList.remove('disabled');
+                    item.querySelector('input').disabled = false;
+                }
+            });
+        }
+
+        function getSelectedValues(type) {
+            let checkboxes;
+            if (type === 'student') {
+                checkboxes = document.querySelectorAll('#studentDropdown input[type="checkbox"]');
+            } else if (type === 'homework') {
+                checkboxes = document.querySelectorAll('#homeworkDropdown input[type="checkbox"]');
+            } else if (type === 'llm') {
+                checkboxes = document.querySelectorAll('#llmDropdown input[type="checkbox"]');
+            } else if (type === 'participation') {
+                checkboxes = document.querySelectorAll('#participationDropdown input[type="checkbox"]');
+            }
+            return Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            
+            if (tabName === 'summary') {
+                document.querySelector('.tab:first-child').classList.add('active');
+                document.getElementById('summaryTab').classList.add('active');
+            } else {
+                document.querySelector('.tab:last-child').classList.add('active');
+                document.getElementById('analysisTab').classList.add('active');
+            }
+        }
+
+        function handleSearch() {
+            const activeTab = document.querySelector('.tab.active').textContent.trim();
+            
+            if (activeTab.includes('Executive Summary')) {
+                searchSubmission();
+            } else {
+                applyFilters();
+            }
+        }
+
+        async function searchSubmission() {
+            const students = getSelectedValues('student');
+            const homeworks = getSelectedValues('homework');
+            const llms = getSelectedValues('llm');
+
+            if (students.length === 0 || homeworks.length === 0 || llms.length === 0) {
+                alert('Please select at least one option from each dropdown');
+                return;
+            }
+
+            const student = students[0];
+            const homework = homeworks[0];
+            const llm = llms[0];
+
+            // Show loading state
+            document.getElementById('summaryText').innerHTML = '<p class="placeholder">Loading submission data...</p>';
+            document.getElementById('pdfViewer').innerHTML = '<div class="loading"><div class="loading-spinner"></div><p style="margin-top: 10px;">Loading PDF...</p></div>';
+
+            const data = await fetchSubmission(student, homework, llm);
+
+            if (data && data.summary) {
+                document.getElementById('summaryText').innerHTML = `<p>${data.summary}</p>`;
+                if (data.pdfUrl) {
+                    document.getElementById('pdfViewer').innerHTML = `
+                        <iframe src="${data.pdfUrl}" width="100%" height="600px" style="border: none;"></iframe>
+                    `;
+                } else {
+                    document.getElementById('pdfViewer').innerHTML = `
+                        <div style="text-align: center;">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#003262" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <p style="color: #003262; font-weight: 600; margin-top: 10px;">Annotated Code PDF</p>
+                            <p style="color: #6c757d; font-size: 14px;">${student} - Homework ${homework} - ${llm}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                document.getElementById('summaryText').innerHTML = `
+                    <p class="placeholder">No submission found for ${student} on Homework ${homework} using ${llm}.</p>
+                    <p class="placeholder" style="margin-top: 10px; font-size: 14px;">Please check your API connection or verify the data exists in the database.</p>
+                `;
+                document.getElementById('pdfViewer').innerHTML = `
+                    <div class="placeholder">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <p>No PDF available</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function applyFilters() {
+            const participation = getSelectedValues('participation');
+            const students = getSelectedValues('student');
+            const homeworks = getSelectedValues('homework');
+            const llms = getSelectedValues('llm');
+
+            if (participation.length === 0 && students.length === 0 && homeworks.length === 0 && llms.length === 0) {
+                alert('Please select at least one filter option');
+                return;
+            }
+
+            // Fetch and display posts
+            const posts = await fetchPosts(participation, students, homeworks, llms);
+            displayPosts(posts);
+
+            generateWordCloud(students, homeworks, llms);
+            
+            // Fetch sentiment data from API
+            const sentiment = await fetchSentimentAnalysis(students, homeworks, llms);
+            displaySentiment(llms, sentiment);
+        }
+
+        function displayPosts(posts) {
+            const grid = document.getElementById('postsGrid');
+            if (!grid) return;
+            
+            grid.innerHTML = '';
+            
+            if (!posts || posts.length === 0) {
+                grid.innerHTML = '<p class="placeholder">No posts found matching the selected filters.</p>';
+                return;
+            }
+
+            posts.forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                card.onclick = () => {
+                    // Handle post click - could open modal or navigate
+                    console.log('Post clicked:', post);
+                };
+                
+                const participationClass = post.participation ? post.participation.toLowerCase() : 'a';
+                const participationLabel = post.participation || 'A';
+                
+                card.innerHTML = `
+                    <h3>${post.title || 'Untitled Post'}</h3>
+                    <div class="post-meta">
+                        <p class="post-author">${post.author || 'Unknown'}</p>
+                        <p class="participation-badge ${participationClass}">Participation ${participationLabel}</p>
+                    </div>
+                    <p class="post-excerpt">${post.excerpt || post.content || 'No content available.'}</p>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function generateWordCloud(students, homeworks, llms) {
+            const words = [
+                {text: 'machine learning', size: 50},
+                {text: 'algorithm', size: 45},
+                {text: 'optimization', size: 40},
+                {text: 'debugging', size: 38},
+                {text: 'implementation', size: 35},
+                {text: 'analysis', size: 33},
+                {text: 'performance', size: 30},
+                {text: 'accuracy', size: 28},
+                {text: 'efficient', size: 26},
+                {text: 'complex', size: 24},
+                {text: 'data structures', size: 22},
+                {text: 'natural language', size: 20},
+                {text: 'prompt engineering', size: 18},
+                {text: 'model', size: 16},
+                {text: 'code quality', size: 14}
+            ];
+
+            const element = document.getElementById('wordcloud');
+            element.innerHTML = '';
+            
+            const width = element.offsetWidth;
+            const height = 500;
+
+            const berkeleyColors = ['#003262', '#3B7EA1', '#FDB515', '#ED4E33', '#00B0DA'];
+
+            const layout = d3.layout.cloud()
+                .size([width, height])
+                .words(words)
+                .padding(5)
+                .rotate(() => 0)
+                .fontSize(d => d.size)
+                .on('end', draw);
+
+            layout.start();
+
+            function draw(words) {
+                const svg = d3.select('#wordcloud').append('svg')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .append('g')
+                    .attr('transform', `translate(${width/2},${height/2})`);
+
+                svg.selectAll('text')
+                    .data(words)
+                    .enter().append('text')
+                    .style('font-size', d => `${d.size}px`)
+                    .style('fill', (d, i) => berkeleyColors[i % berkeleyColors.length])
+                    .style('font-family', 'Noto Serif, serif')
+                    .style('font-weight', '600')
+                    .attr('text-anchor', 'middle')
+                    .attr('transform', d => `translate(${d.x},${d.y})`)
+                    .text(d => d.text);
+            }
+        }
+
+        function displaySentiment(selectedLLMs, sentimentDataParam = null) {
+            const grid = document.getElementById('sentimentGrid');
+            grid.innerHTML = '';
+
+            const dataToUse = sentimentDataParam || sentimentData;
+            const dataToDisplay = selectedLLMs.length > 0 
+                ? Object.entries(dataToUse).filter(([llm]) => selectedLLMs.includes(llm))
+                : Object.entries(dataToUse);
+
+            if (dataToDisplay.length === 0) {
+                grid.innerHTML = '<p class="placeholder">No sentiment data available for selected LLMs</p>';
+                return;
+            }
+
+            dataToDisplay.forEach(([llm, data]) => {
+                const card = document.createElement('div');
+                card.className = `sentiment-card ${data.sentiment || 'neutral'}`;
+                card.innerHTML = `
+                    <div class="llm-name">${llm}</div>
+                    <div class="sentiment-score">${((data.score || 0) * 100).toFixed(0)}%</div>
+                    <div style="color: #6c757d; font-size: 14px; text-transform: capitalize;">${data.sentiment || 'neutral'}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
