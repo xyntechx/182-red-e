@@ -1,6 +1,3 @@
-# 182 Blue Team
+# 182 Red Participation E
 
-## Features
-- Filters for participation type (A-E)
-- Search bar to filter author
-- Search bar to filter post title
+The task is to vibecode a website for Special Participation E Ed posts for CS 182 FA25. I would've loved to write the website by hand, but rules are rules :")
